@@ -1,0 +1,6 @@
+ms-company,https://ms-company-s5k4.onrender.com
+ms-products,https://ms-productos-1560.onrender.com
+ms-customer,https://ms-clientes.onrender.com
+ms-ventas,https://ms-ventas.onrender.com
+ms-supplier,http://ms-supplier-ccsm.onrender.com
+ms-courier,https://ms-courier.onrender.com
