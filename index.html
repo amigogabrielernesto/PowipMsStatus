@@ -5,60 +5,96 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Estado de Servicios - Powip</title>
   <style>
+    :root {
+      --bg-color: #0d1117;
+      --card-bg: #161b22;
+      --text-color: #c9d1d9;
+      --accent: #58a6ff;
+      --ok: #3fb950;
+      --error: #f85149;
+      --header-bg: #21262d;
+    }
+
     body {
       font-family: system-ui, sans-serif;
-      background-color: #f5f6fa;
+      background-color: var(--bg-color);
+      color: var(--text-color);
       margin: 0;
       padding: 20px;
-      color: #333;
     }
+
     h1 {
       text-align: center;
       margin-bottom: 30px;
-      color: #222;
+      color: var(--accent);
+      font-size: 2rem;
     }
+
     table {
       width: 100%;
-      max-width: 800px;
+      max-width: 900px;
       margin: 0 auto;
       border-collapse: collapse;
-      background: #fff;
-      box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+      background: var(--card-bg);
       border-radius: 8px;
       overflow: hidden;
+      box-shadow: 0 0 10px rgba(0,0,0,0.5);
     }
+
     th, td {
       padding: 12px 15px;
       text-align: left;
     }
+
     th {
-      background-color: #0078d7;
-      color: #fff;
+      background-color: var(--header-bg);
+      color: var(--accent);
+      font-weight: 600;
+      text-transform: uppercase;
     }
+
     tr:nth-child(even) {
-      background-color: #f8f8f8;
+      background-color: rgba(255, 255, 255, 0.05);
     }
+
+    tr:hover {
+      background-color: rgba(88, 166, 255, 0.1);
+      transition: background-color 0.2s ease;
+    }
+
     .status {
       font-weight: bold;
       text-transform: capitalize;
     }
+
     .ok {
-      color: green;
+      color: var(--ok);
     }
+
     .error {
-      color: red;
+      color: var(--error);
     }
+
     a {
-      color: #0078d7;
+      color: var(--accent);
       text-decoration: none;
     }
+
     a:hover {
       text-decoration: underline;
+    }
+
+    footer {
+      text-align: center;
+      color: #8b949e;
+      margin-top: 25px;
+      font-size: 0.9rem;
     }
   </style>
 </head>
 <body>
-  <h1>Estado de Servicios - Powip</h1>
+  <h1>🌌 Estado de Servicios - Powip</h1>
+
   <table>
     <thead>
       <tr>
@@ -69,12 +105,13 @@
       </tr>
     </thead>
     <tbody id="tabla-sitios">
-      <!-- contenido generado dinámicamente -->
+      <tr><td colspan="4" style="text-align:center;">Cargando...</td></tr>
     </tbody>
   </table>
 
+  <footer>Actualizado automáticamente cada 60 segundos</footer>
+
   <script>
-    // 🔹 Arreglo local con los servicios
     const sitios = [
       { nombre: "Usuarios", url: "https://ms-users.onrender.com" },
       { nombre: "ÓrdenesVentas", url: "https://ms-ventas.onrender.com" },
@@ -83,37 +120,42 @@
       { nombre: "Pagos", url: "https://ms-payments.onrender.com" },
       { nombre: "ms-company", url: "https://ms-company-s5k4.onrender.com"},
       { nombre: "ms-customer", url: "https://ms-clientes.onrender.com"},
-      { nombre: "ms-supplier",url: "http://ms-supplier-ccsm.onrender.com"}
-
+      { nombre: "ms-supplier", url: "http://ms-supplier-ccsm.onrender.com"}
     ];
 
     const tabla = document.getElementById("tabla-sitios");
 
-    sitios.forEach(async (sitio) => {
-      const tr = document.createElement("tr");
-      const swaggerUrl = sitio.url + "/api";
+    async function actualizar() {
+      tabla.innerHTML = "<tr><td colspan='4' style='text-align:center;'>Verificando servicios...</td></tr>";
 
-      try {
-        const res = await fetch(sitio.url, { method: "GET" });
-        const ok = res.ok;
+      const filas = await Promise.all(sitios.map(async sitio => {
+        const swaggerUrl = sitio.url + "/api";
+        let estado = "Offline";
+        let clase = "error";
 
-        tr.innerHTML = `
-          <td>${sitio.nombre}</td>
-          <td><a href="${sitio.url}" target="_blank">${sitio.url}</a></td>
-          <td><a href="${swaggerUrl}" target="_blank">${swaggerUrl}</a></td>
-          <td class="status ${ok ? "ok" : "error"}">${ok ? "Online" : "Offline"}</td>
+        try {
+          const res = await fetch(sitio.url, { method: "GET" });
+          if (res.ok) {
+            estado = "Online";
+            clase = "ok";
+          }
+        } catch {}
+
+        return `
+          <tr>
+            <td>${sitio.nombre}</td>
+            <td><a href="${sitio.url}" target="_blank">${sitio.url}</a></td>
+            <td><a href="${swaggerUrl}" target="_blank">${swaggerUrl}</a></td>
+            <td class="status ${clase}">${estado}</td>
+          </tr>
         `;
-      } catch (error) {
-        tr.innerHTML = `
-          <td>${sitio.nombre}</td>
-          <td><a href="${sitio.url}" target="_blank">${sitio.url}</a></td>
-          <td><a href="${swaggerUrl}" target="_blank">${swaggerUrl}</a></td>
-          <td class="status error">Offline</td>
-        `;
-      }
+      }));
 
-      tabla.appendChild(tr);
-    });
+      tabla.innerHTML = filas.join("");
+    }
+
+    actualizar();
+    setInterval(actualizar, 60000);
   </script>
 </body>
 </html>
