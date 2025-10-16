@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Powip Services Status</title>
+    <style>
+      :root {
+        --bg: #0b0c10;
+        --card: #1f2833;
+        --accent: #45a29e;
+        --text: #c5c6c7;
+        --title: #66fcf1;
+        --success: #4caf50;
+        --error: #f44336;
+        --warning: #ffb74d;
+      }
+
+      body {
+        font-family: "Inter", system-ui, sans-serif;
+        background: var(--bg);
+        color: var(--text);
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        min-height: 100vh;
+        margin: 0;
+        padding: 2rem;
+      }
+
+      h1 {
+        color: var(--title);
+        font-size: 2.4rem;
+        letter-spacing: 1px;
+        margin-bottom: 1.5rem;
+        animation: fadeIn 1s ease;
+      }
+
+      table {
+        border-collapse: collapse;
+        width: 90%;
+        max-width: 800px;
+        background: var(--card);
+        border-radius: 12px;
+        overflow: hidden;
+        box-shadow: 0 4px 25px rgba(0, 0, 0, 0.3);
+        animation: fadeInUp 1s ease;
+      }
+
+      th,
+      td {
+        padding: 1rem;
+        text-align: left;
+      }
+
+      th {
+        background: var(--accent);
+        color: var(--bg);
+        font-weight: bold;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+      }
+
+      tr {
+        transition: background 0.3s;
+      }
+
+      tr:nth-child(even) {
+        background: rgba(255, 255, 255, 0.05);
+      }
+
+      tr:hover {
+        background: rgba(102, 252, 241, 0.08);
+      }
+
+      .status {
+        font-weight: 600;
+        text-align: center;
+      }
+
+      .ok {
+        color: var(--success);
+      }
+      .fail {
+        color: var(--error);
+      }
+      .loading {
+        color: var(--warning);
+      }
+
+      a {
+        color: var(--title);
+        text-decoration: none;
+      }
+
+      a:hover {
+        text-decoration: underline;
+      }
+
+      footer {
+        margin-top: 2rem;
+        font-size: 0.9rem;
+        color: #888;
+        text-align: center;
+        animation: fadeIn 1.2s ease;
+      }
+
+      @keyframes fadeIn {
+        from {
+          opacity: 0;
+        }
+        to {
+          opacity: 1;
+        }
+      }
+
+      @keyframes fadeInUp {
+        from {
+          opacity: 0;
+          transform: translateY(20px);
+        }
+        to {
+          opacity: 1;
+          transform: translateY(0);
+        }
+      }
+
+      .pulse {
+        animation: pulse 1.5s infinite;
+      }
+
+      @keyframes pulse {
+        0% {
+          opacity: 0.6;
+        }
+        50% {
+          opacity: 1;
+        }
+        100% {
+          opacity: 0.6;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <h1>🌐 Estado de los Microservicios Powip</h1>
+    <table>
+      <thead>
+        <tr>
+          <th>Servicio</th>
+          <th>URL</th>
+          <th>Estado</th>
+        </tr>
+      </thead>
+      <tbody id="serviceBody">
+        <tr>
+          <td colspan="3" class="status loading pulse">Cargando estado...</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <footer>Última actualización: <span id="timestamp">--</span></footer>
+
+    <script>
+      const services = [
+        { name: "ms-company", url: "https://ms-company-s5k4.onrender.com/" },
+        { name: "ms-products", url: "https://ms-productos-1560.onrender.com/" },
+        { name: "ms-customer", url: "https://ms-clientes.onrender.com/" },
+        { name: "ms-ventas", url: "https://ms-ventas.onrender.com" },
+        { name: "ms-supplier", url: "http://ms-supplier-ccsm.onrender.com" },
+        { name: "ms-courier", url: "https://ms-courier.onrender.com" },
+      ];
+
+      async function checkService(service) {
+        const start = Date.now();
+        try {
+          const controller = new AbortController();
+          const timeout = setTimeout(() => controller.abort(), 15000);
+          const res = await fetch(service.url, { signal: controller.signal });
+          clearTimeout(timeout);
+          const time = Date.now() - start;
+          console.log(res);
+          if (res.ok) {
+            return { ...service, status: "ok", time };
+          } else {
+            return { ...service, status: "fail" };
+          }
+        } catch {
+          return { ...service, status: "fail" };
+        }
+      }
+
+      async function updateStatus() {
+        const tbody = document.getElementById("serviceBody");
+        tbody.innerHTML =
+          "<tr><td colspan='3' class='status loading pulse'>Verificando...</td></tr>";
+
+        const results = await Promise.all(services.map(checkService));
+
+        tbody.innerHTML = "";
+        results.forEach((s) => {
+          const tr = document.createElement("tr");
+          tr.innerHTML = `
+          <td>${s.name}</td>
+          <td><a href="${s.url}" target="_blank">${s.url}</a></td>
+          <td class="status ${s.status === "ok" ? "ok" : "fail"}">
+            ${s.status === "ok" ? `🟢 Activo (${s.time} ms)` : "🔴 Inactivo"}
+          </td>
+        `;
+          tbody.appendChild(tr);
+        });
+
+        document.getElementById("timestamp").textContent =
+          new Date().toLocaleString("es-AR");
+      }
+
+      updateStatus();
+      setInterval(updateStatus, 60000);
+    </script>
+  </body>
+</html>
