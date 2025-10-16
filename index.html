@@ -38,8 +38,8 @@
 
       table {
         border-collapse: collapse;
-        width: 90%;
-        max-width: 800px;
+        width: 95%;
+        max-width: 1100px;
         background: var(--card);
         border-radius: 12px;
         overflow: hidden;
@@ -59,10 +59,6 @@
         font-weight: bold;
         text-transform: uppercase;
         letter-spacing: 0.5px;
-      }
-
-      tr {
-        transition: background 0.3s;
       }
 
       tr:nth-child(even) {
@@ -149,12 +145,14 @@
         <tr>
           <th>Servicio</th>
           <th>URL</th>
-          <th>Estado</th>
+          <th>Swagger</th>
+          <th>Estado Servicio</th>
+          <th>Estado Swagger</th>
         </tr>
       </thead>
       <tbody id="serviceBody">
         <tr>
-          <td colspan="3" class="status loading pulse">Cargando estado...</td>
+          <td colspan="5" class="status loading pulse">Cargando estado...</td>
         </tr>
       </tbody>
     </table>
@@ -162,51 +160,80 @@
     <footer>Última actualización: <span id="timestamp">--</span></footer>
 
     <script>
-      const services = [
-        { name: "ms-company", url: "https://ms-company-s5k4.onrender.com/" },
-        { name: "ms-ventas", url: "https://ms-ventas.onrender.com" },
-        { name: "ms-courier", url: "https://ms-courier.onrender.com" },
-        { name: "ms-products", url: "https://ms-productos-1560.onrender.com/" },
-        { name: "ms-customer", url: "https://ms-clientes.onrender.com/" },
-        { name: "ms-supplier", url: "http://ms-supplier-ccsm.onrender.com" },
-        ];
+      // Carga la lista de servicios desde el archivo sitios.txt
+      async function cargarServicios() {
+        const resp = await fetch("sitios.txt");
+        const text = await resp.text();
+        return text
+          .trim()
+          .split("\n")
+          .map((linea) => {
+            const [name, url] = linea.split(",");
+            const cleanUrl = url.trim().replace(/\/$/, ""); // quita "/" final
+            return {
+              name: name.trim(),
+              url: cleanUrl,
+              swagger: `${cleanUrl}/api`,
+            };
+          });
+      }
 
-      async function checkService(service) {
+      // Chequea el estado de un endpoint (servicio o swagger)
+      async function checkEndpoint(url) {
         const start = Date.now();
         try {
           const controller = new AbortController();
-          const timeout = setTimeout(() => controller.abort(), 15000);
-          const res = await fetch(service.url, { signal: controller.signal });
+          const timeout = setTimeout(() => controller.abort(), 10000);
+          const res = await fetch(url, { signal: controller.signal });
           clearTimeout(timeout);
           const time = Date.now() - start;
-          console.log(res);
-          if (res.ok) {
-            return { ...service, status: "ok", time };
-          } else {
-            return { ...service, status: "fail" };
-          }
+          return res.ok
+            ? { status: "ok", time }
+            : { status: "fail", time: null };
         } catch {
-          return { ...service, status: "fail" };
+          return { status: "fail", time: null };
         }
+      }
+
+      // Verifica ambos: servicio principal y swagger
+      async function checkService(service) {
+        const [main, swagger] = await Promise.all([
+          checkEndpoint(service.url),
+          checkEndpoint(service.swagger),
+        ]);
+        return { ...service, main, swagger };
       }
 
       async function updateStatus() {
         const tbody = document.getElementById("serviceBody");
         tbody.innerHTML =
-          "<tr><td colspan='3' class='status loading pulse'>Verificando...</td></tr>";
+          "<tr><td colspan='5' class='status loading pulse'>Verificando...</td></tr>";
 
+        const services = await cargarServicios();
         const results = await Promise.all(services.map(checkService));
 
         tbody.innerHTML = "";
         results.forEach((s) => {
           const tr = document.createElement("tr");
           tr.innerHTML = `
-          <td>${s.name}</td>
-          <td><a href="${s.url}" target="_blank">${s.url}</a></td>
-          <td class="status ${s.status === "ok" ? "ok" : "fail"}">
-            ${s.status === "ok" ? `🟢 Activo (${s.time} ms)` : "🔴 Inactivo"}
-          </td>
-        `;
+            <td>${s.name}</td>
+            <td><a href="${s.url}" target="_blank">${s.url}</a></td>
+            <td><a href="${s.swagger}" target="_blank">${s.swagger}</a></td>
+            <td class="status ${s.main.status}">
+              ${
+                s.main.status === "ok"
+                  ? `🟢 Activo (${s.main.time} ms)`
+                  : "🔴 Inactivo"
+              }
+            </td>
+            <td class="status ${s.swagger.status}">
+              ${
+                s.swagger.status === "ok"
+                  ? `🟢 OK (${s.swagger.time} ms)`
+                  : "🔴 Error"
+              }
+            </td>
+          `;
           tbody.appendChild(tr);
         });
 
